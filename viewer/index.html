@@ -81,15 +81,15 @@
   /* ── side panel (right) ─────────────────────────────────────────────────── */
   #side{width:var(--sideW,344px);flex:none;border-left:1px solid var(--line);background:var(--panel);
     display:flex;flex-direction:column;overflow:auto}
-  header{display:flex;gap:10px;align-items:flex-start;padding:14px 12px 12px 14px;border-bottom:1px solid var(--line)}
-  header .brand{flex:1;min-width:0;display:inline-flex;align-items:center;gap:11px}
-  header .brand .mark{width:30px;height:30px;flex:none}
-  header .brand .name{font-size:19px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;
+  header{display:flex;align-items:center;gap:10px;padding:12px 10px 12px 15px;border-bottom:1px solid var(--line)}
+  header .brand{flex:1;min-width:0;display:inline-flex;align-items:center;gap:10px}
+  header .brand .mark{width:28px;height:28px;flex:none}
+  header .brand .name{font-size:18px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
     color:var(--ink);line-height:1}
-  .headctl{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:7px}
+  .headctl{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:6px}
   .headctl #newDot{width:100%;text-align:center}
-  #sideCollapse{flex:none;width:24px;height:24px;padding:0;font-size:15px;line-height:1;
-    color:var(--muted);background:transparent;border:0;border-radius:7px}
+  #sideCollapse{flex:none;width:26px;height:26px;padding:0;font-size:15px;line-height:1;
+    color:var(--muted);background:transparent;border:0;border-radius:7px;cursor:pointer}
   #sideCollapse:hover{background:var(--hair);color:var(--ink)}
 
   /* segmented view toggle — the one bold chrome element, everything else quiet */
@@ -142,13 +142,15 @@
   /* project legend rows breathe a little more */
   #legend .grid.proj{row-gap:14px}
 
-  /* foldable side panel: collapse to a floating button (lower-right) */
-  #app.side-hidden #side,#app.side-hidden #grip{display:none}
-  #sideToggle{position:fixed;right:16px;bottom:16px;z-index:20;display:none;
-    width:42px;height:42px;border-radius:50%;background:var(--panel);border:1px solid var(--line);
-    box-shadow:var(--shadow);align-items:center;justify-content:center;font-size:20px;color:var(--ink)}
-  #sideToggle:hover{border-color:var(--muted)}
-  #app.side-hidden #sideToggle{display:inline-flex}
+  /* foldable side panel: collapse to a floating button (lower-right).
+     class lives on <body> so #sideToggle (a body child, outside #app) can react. */
+  body.side-hidden #side,body.side-hidden #grip{display:none}
+  #sideToggle{position:fixed;right:18px;bottom:18px;z-index:20;display:none;
+    width:46px;height:46px;border-radius:50%;background:var(--panel);border:1px solid var(--line);
+    box-shadow:var(--shadow);align-items:center;justify-content:center;color:var(--ink);cursor:pointer}
+  #sideToggle svg{width:24px;height:24px}
+  #sideToggle:hover{border-color:var(--accent);transform:translateY(-1px)}
+  body.side-hidden #sideToggle{display:inline-flex}
 
   #toast{position:fixed;bottom:18px;left:18px;background:var(--ink);color:var(--page);
     padding:9px 15px;border-radius:8px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);
@@ -251,7 +253,13 @@
   </div>
 </div>
 <div id="toast"></div>
-<button id="sideToggle" title="show panel">&#8249;</button>
+<button id="sideToggle" title="show panel">
+  <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M10.5 21.4 C3.9 18.4 4.3 9.6 9.7 6.9"/><path d="M17.5 21.4 C24.1 18.4 23.7 9.6 18.3 6.9"/>
+    <path d="M9.7 6.9 C12.4 5.2 15.6 5.2 18.3 6.9"/><path d="M10.9 21.1 C12.6 23.1 15.4 23.1 17.1 21.1"/>
+    <path d="M14 21.3 L14 6.8" stroke-width="1"/>
+  </svg>
+</button>
 <script>
 const $ = s => document.querySelector(s);
 
@@ -664,7 +672,7 @@ $("#focus").onclick=()=>{ if(selected && mode==="graph" && cy) cy.fit(cy.$id(sel
 ["#search","#fType","#fStatus","#fSource","#fMile"].forEach(s=>$(s).addEventListener("input",()=>render()));
 
 /* foldable side panel — collapse to a floating button (lower-right), click to restore */
-function setSide(hidden){ $("#app").classList.toggle("side-hidden",hidden);
+function setSide(hidden){ document.body.classList.toggle("side-hidden",hidden);
   try{ localStorage.setItem("Mneme.sideHidden",hidden?"1":""); }catch(_){}
   if(cy) setTimeout(()=>{ cy.resize(); cy.fit(cy.nodes(),44); },0);
   if(mode==="road") setTimeout(renderRoadmap,0);
