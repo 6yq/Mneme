@@ -27,7 +27,7 @@ ships their notes or setup with the tool.
 
 ```bash
 git clone <this-repo> palace && cd palace
-python3 viewer/serve.py            # -> http://127.0.0.1:8000  (shows examples/)
+python3 viewer/serve.py            # -> http://127.0.0.1:8899  (shows examples/)
 ```
 
 No build step, no pip install — `serve.py` is Python-3 stdlib only. When
@@ -37,7 +37,7 @@ No build step, no pip install — `serve.py` is Python-3 stdlib only. When
 
 ```bash
 python3 viewer/serve.py            # on the remote
-ssh -L 8000:127.0.0.1:8000 <host>  # on your laptop, then open localhost:8000
+ssh -L 8899:127.0.0.1:8899 <host>  # on your laptop, then open localhost:8899
 ```
 
 ## Make dots

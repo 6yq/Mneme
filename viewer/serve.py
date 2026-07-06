@@ -5,9 +5,9 @@ Serves the Cytoscape graph and reads/writes dots as markdown.
 Markdown files in ../dots/*.md are the source of truth; this server never
 holds a database — it parses the files on every request.
 
-Run:   python3 serve.py [--port 8000] [--reindex]
-Local: open http://127.0.0.1:8000
-Remote (no X):  ssh -L 8000:127.0.0.1:8000 host  then open localhost:8000 locally.
+Run:   python3 serve.py [--port 8899] [--reindex]
+Local: open http://127.0.0.1:8899
+Remote (no X):  ssh -L 8899:127.0.0.1:8899 host  then open localhost:8899 locally.
 
 Security: binds 127.0.0.1 only. POST writes are confined to ../dots/ and the
 id is sanitized — never expose this to a network.
@@ -179,7 +179,7 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         pass
 
 def main():
-    port = 8000
+    port = 8899
     if "--reindex" in sys.argv:
         reindex(); return
     if "--port" in sys.argv:

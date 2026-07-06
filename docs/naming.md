@@ -1,42 +1,44 @@
 # Project naming convention
 
-The `project:` field of a dot is a stable identifier in **canonical case**. The viewer
-keys node colour and roadmap lane off its exact string, so keep spelling *and* case
-consistent across a work stream — renaming splits its history into two colours/lanes.
+The `project:` field of a dot is a stable identifier. The viewer keys node colour and
+roadmap lane off the **exact string**, so keep spelling and case consistent across a
+work stream — renaming splits its history into two colours/lanes.
 
-## Rules
+## The pattern: `Scope:Subject`
 
-- **Format:** `<Experiment>:<Topic>`, preserving the physics capitalisation you'd write
-  on a slide. The value is a plain string (a colon and `/` are fine — the frontmatter
-  parser splits only on the first `: `). One string = one colour = one lane.
-- **Experiment prefix** (optional; use when the same topic recurs across detectors):
-  `TAO`, `OSIRIS`, `JUNO`, `JNE` (Jinping / 锦屏). A bare `<Topic>` is fine when the
-  experiment is implicit.
-- **Non-experiment buckets** (for work that isn't tied to one detector): use a
-  descriptive prefix in the same `Prefix:Topic` shape — `Methods:` for reusable
-  numerical/analysis tooling (e.g. `Methods:Fitters`), `Teaching:` for course-ops
-  (e.g. `Teaching:PhysicsData`). Keep them lane/colour-stable like any project.
-- **Canonical topics** (reuse these exact spellings; extend as needed):
-  `Calib`, `Reco`, `IBD`, `Li9/He8`, `BiPo214`, `BiPo212`, `Accidental`, `Muon`,
-  `PMT`, `Sim`, `Commission`, `Probe`, `DB`, `DQM`, `Fitters`.
+Group a dot under a **Scope** (a top-level bucket that means something to you) and a
+**Subject** (the specific thread inside it):
 
-## Examples
+```
+<Scope>:<Subject>
+```
 
-| project string    | reads as                          |
-|-------------------|-----------------------------------|
-| `TAO:Reco`        | TAO · reconstruction              |
-| `TAO:IBD`         | TAO · IBD selection               |
-| `OSIRIS:BiPo214`  | OSIRIS · BiPo-214                 |
-| `OSIRIS:BiPo212`  | OSIRIS · BiPo-212                 |
-| `JUNO:Li9/He8`    | JUNO · ⁹Li/⁸He background         |
-| `JUNO:Calib`      | JUNO · laser/PMT calibration      |
-| `JNE:Calib`       | Jinping · PMT gain calibration    |
-| `Methods:Fitters` | reusable charge-spectrum fitters  |
-| `Teaching:PhysicsData` | Tsinghua physics-data course |
+- **Canonical case.** Write it the way you'd write it on a slide; keep it identical
+  everywhere. `Reco` ≠ `reco` ≠ `RECO` to the viewer.
+- **One string = one colour = one lane.** Pick the split that gives you useful lanes.
+- **Plain string.** A colon separates Scope from Subject; the frontmatter parser splits
+  only on the first `: `, so `/`, digits, and extra words inside the Subject are fine.
+- **Bare `<Subject>`** is allowed when the Scope is obvious (e.g. a single-project vault).
+- Need a third level? Just extend the Subject (`Scope:Subject-Detail`) — the viewer
+  treats the whole string as the key; only the leading `:` is structurally meaningful
+  (a future "group lanes by Scope" view would split on it).
 
-## Notes
+## Choose Scope to fit your work — examples across domains
 
-- Sorting is case-sensitive, so lanes/legend order by the raw string (`TAO:IBD` before
-  `TAO:Reco`). That's fine — it groups by experiment prefix.
-- A future "group lanes by experiment" view would split on the `:` prefix, so always
-  prefer `TAO:IBD` over `TAO_IBD` or `taoibd`.
+| domain          | example `project:` values                          |
+|-----------------|----------------------------------------------------|
+| research (exp.) | `JUNO:Reco`, `OSIRIS:Calib`, `TAO:IBD`             |
+| research (area) | `Methods:Fitters`, `Stats:Unfolding`               |
+| software        | `WebApp:Auth`, `WebApp:Billing`, `Infra:CI`        |
+| writing         | `Thesis:Ch3`, `Paper:Revisions`                    |
+| teaching / life | `Teaching:PhysicsData`, `Palace:Meta`              |
+
+Scope can be an experiment, a product, a course, a research area, a client — whatever
+gives you legible lanes. Mix experiment-scopes and topic-scopes freely.
+
+## Keep your own vocabulary
+
+The specific Scopes and Subjects you use are **yours to maintain** — record your
+canonical list wherever you keep project notes (e.g. your own `CLAUDE.md`), so you and
+your agents spell them the same way every time. This repo only defines the *pattern*,
+not anyone's particular vocabulary.

@@ -45,6 +45,15 @@
   #road text{font:11px/1 system-ui,sans-serif}
   #road{cursor:grab}
   #road.grabbing{cursor:grabbing}
+  /* roadmap frozen panes: axis pinned top, lane gutter pinned left, plot scrolls */
+  .rm-grid{display:grid;width:max-content}
+  .rm-corner{position:sticky;left:0;top:0;z-index:4;background:var(--surface);
+    border-right:1.5px solid var(--line);border-bottom:1.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;
+    color:var(--muted);font-size:9.5px;text-transform:uppercase;letter-spacing:.07em}
+  .rm-axis{position:sticky;top:0;z-index:3;background:var(--surface);border-bottom:1.5px solid var(--line)}
+  .rm-gutter{position:sticky;left:0;z-index:2;background:var(--surface);border-right:1.5px solid var(--line)}
+  .rm-body{position:relative}
 
   /* drag handle to resize the side panel */
   #grip{flex:none;width:7px;cursor:col-resize;position:relative;z-index:5}
@@ -407,6 +416,7 @@ function svgShapeMarkup(type,cx,cy,r,fill,cls,extra){
   return `<ellipse ${c} cx="${cx}" cy="${cy}" rx="${r}" ry="${(r*0.82).toFixed(1)}" ${a}/>`; // insight
 }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+function clip(str,px){ const max=Math.max(3,Math.floor(px/6.6)); return str.length>max? str.slice(0,max-1)+"…" : String(str); }
 
 /* pure layout — exported shape kept simple so it is unit-testable in node. */
 function roadmapLayout(nodes, opts){
@@ -458,93 +468,76 @@ function nextPath(a,b,ra,rb){
 function renderRoadmap(){
   const road=$("#road"); const nodes=visibleNodes();
   if(!nodes.length){ road.innerHTML='<div style="padding:26px;color:var(--muted)">No dots match the filters.</div>'; return; }
-  const t=tok();
-  const GUT=138, AXIS=42, PADT=6, ROW=50, LANEPAD=26, MARKW=150;   // taller rows give the elbow stubs room
-  const approxTextW=str=> String(str).length*6.3 + 10;      // ~11px system-ui glyph
+  const t=tok(), z=roadZoom;
+  const GUT=152, AXIS=46, PADT=8, ROW=50, LANEPAD=26, MARKW=150;   // GUT/AXIS are FIXED frozen headers (never zoom)
+  const approxTextW=str=> String(str).length*6.3 + 10;
   const dated=nodes.map(n=>parseDate(n.date)).filter(Boolean).map(d=>d.getTime());
   const spanDays=dated.length? Math.max(1,(Math.max(...dated)-Math.min(...dated))/864e5) : 1;
-  const avail=(road.clientWidth||900)-GUT-40;              // fill container when span is short
-  const plotW=Math.max(560, Math.round(spanDays*8)+160, avail);
-  const x0=GUT+18, x1=GUT+plotW-40;
-  const L=roadmapLayout(nodes,{GUT,AXIS,PADT,ROW,LANEPAD,MARKW,x0,x1});
+  const availU=((road.clientWidth||900)-GUT-24)/Math.max(z,0.001);  // plot-units that fill the body at this zoom
+  const plotW=Math.max(480, Math.round(spanDays*8)+120, availU);
+  const x0=18, x1=plotW-40;                                          // body-local coords (gutter is a separate pane)
+  const L=roadmapLayout(nodes,{GUT:0,AXIS:0,PADT,ROW,LANEPAD,MARKW,x0,x1});
   const byId=Object.fromEntries(nodes.map(n=>[n.id,n]));
-  // adaptive width: extend so the longest label (drawn to the right of its marker,
-  // full text, never truncated) is never clipped by the SVG viewport (point 2).
-  let maxRight=GUT+plotW;
-  nodes.forEach(n=>{ const p=L.pos[n.id]; if(!p) return;
-    maxRight=Math.max(maxRight, p.x+svgRadius(n)+8+approxTextW(n.title)); });
-  const W=Math.round(maxRight+18);
-  const H=Math.max(L.totalH, road.clientHeight||360);
-  roadNat={W,H};   // natural size, so the zoom controls can fit-to-view
+  let maxRight=plotW;                                                // extend so the longest label is never clipped
+  nodes.forEach(n=>{ const p=L.pos[n.id]; if(!p) return; maxRight=Math.max(maxRight, p.x+svgRadius(n)+8+approxTextW(n.title)); });
+  const PW=Math.round(maxRight+18), PH=Math.round(L.totalH);         // plot content size, in plot-units
+  roadNat={PW,PH,GUT,AXIS};
+  const bodyW=Math.round(PW*z), bodyH=Math.round(PH*z);
 
-  let s=`<svg width="${Math.round(W*roadZoom)}" height="${Math.round(H*roadZoom)}" viewBox="0 0 ${W} ${H}">`;
-
-  // lane bands + lane labels
-  L.laneInfo.forEach((ln,i)=>{
-    if(i%2) s+=`<rect x="0" y="${ln.top}" width="${W}" height="${ln.h}" fill="${t.band}"/>`;
-    s+=`<line x1="${GUT}" y1="${ln.top}" x2="${W}" y2="${ln.top}" stroke="${t.hair}"/>`;
-    s+=`<rect x="10" y="${ln.top+ln.h/2-9}" width="10" height="10" rx="2.5" fill="${projColor(ln.p)}"/>`;
-    s+=`<text x="26" y="${ln.top+ln.h/2}" dominant-baseline="middle" fill="${t.ink2}" style="font-weight:600">${esc(ln.p)}</text>`;
-  });
-  // axis: month gridlines + tick labels
-  s+=`<rect x="${GUT}" y="0" width="${W-GUT}" height="${AXIS}" fill="${t.surface}"/>`;
-  monthTicks(L.t0,L.t1).forEach(dt=>{ const x=L.xOf(dt.getTime());
-    s+=`<line x1="${x.toFixed(1)}" y1="${AXIS-6}" x2="${x.toFixed(1)}" y2="${H}" stroke="${t.hair}"/>`;
-    s+=`<text x="${x.toFixed(1)}" y="26" text-anchor="middle" fill="${t.muted}">${fmtMonth(dt)}</text>`; });
-  s+=`<line x1="${GUT}" y1="${AXIS}" x2="${W}" y2="${AXIS}" stroke="${t.line}"/>`;
-  s+=`<line x1="${GUT}" y1="0" x2="${GUT}" y2="${H}" stroke="${t.line}"/>`;
-
-  // intra-lane relationship arcs (part-of / motivates / related) bow above the lane
-  // so inner structure reads without crossing markers — prominent + labelled when a
-  // single project is in view, quiet otherwise (point 4).
+  // ── BODY (zoomable): bands, gridlines, arcs, next-spine, markers ──────────────
+  let b=`<svg width="${bodyW}" height="${bodyH}" viewBox="0 0 ${PW} ${PH}">`;
+  L.laneInfo.forEach((ln,i)=>{ if(i%2) b+=`<rect x="0" y="${ln.top}" width="${PW}" height="${ln.h}" fill="${t.band}"/>`;
+    b+=`<line x1="0" y1="${ln.top.toFixed(1)}" x2="${PW}" y2="${ln.top.toFixed(1)}" stroke="${t.hair}"/>`; });
+  monthTicks(L.t0,L.t1).forEach(dt=>{ const x=L.xOf(dt.getTime()).toFixed(1);
+    b+=`<line x1="${x}" y1="0" x2="${x}" y2="${PH}" stroke="${t.hair}"/>`; });
   const single=L.laneInfo.length===1;
-  DATA.edges.forEach(e=>{
-    if(e.rel==="next") return;
-    const a=L.pos[e.source], b=L.pos[e.target], sp=byId[e.source], tp=byId[e.target];
-    if(!a||!b||!sp||!tp||sp.project!==tp.project) return;            // intra-lane only
-    const fam=relFamily(e.rel);
-    const col=fam==="hier"?t.hier:fam==="causal"?t.causal:t.assoc;
-    const dash=fam==="hier"?"":fam==="causal"?"5 3":"2 3";
-    const dx=Math.abs(a.x-b.x), bow=Math.min(48,18+dx*0.16);
-    const mx=((a.x+b.x)/2).toFixed(1), my=Math.max(AXIS+10,Math.min(a.y,b.y)-bow).toFixed(1);
-    s+=`<path d="M${a.x.toFixed(1)},${a.y.toFixed(1)} Q${mx},${my} ${b.x.toFixed(1)},${b.y.toFixed(1)}" `
-      +`fill="none" stroke="${col}" stroke-width="${single?1.8:1.1}" ${dash?`stroke-dasharray="${dash}"`:""} opacity="${single?0.85:0.32}"/>`;
-    if(single) s+=`<text x="${mx}" y="${(+my-4).toFixed(1)}" text-anchor="middle" fill="${col}" font-size="9.5" font-weight="600">${esc(e.rel)}</text>`;
+  DATA.edges.forEach(e=>{ if(e.rel==="next") return;                 // intra-lane relationship arcs
+    const a=L.pos[e.source], bb=L.pos[e.target], sp=byId[e.source], tp=byId[e.target];
+    if(!a||!bb||!sp||!tp||sp.project!==tp.project) return;
+    const fam=relFamily(e.rel), col=fam==="hier"?t.hier:fam==="causal"?t.causal:t.assoc, dash=fam==="hier"?"":fam==="causal"?"5 3":"2 3";
+    const dxx=Math.abs(a.x-bb.x), bow=Math.min(48,18+dxx*0.16), mx=((a.x+bb.x)/2).toFixed(1), my=Math.max(10,Math.min(a.y,bb.y)-bow).toFixed(1);
+    b+=`<path d="M${a.x.toFixed(1)},${a.y.toFixed(1)} Q${mx},${my} ${bb.x.toFixed(1)},${bb.y.toFixed(1)}" fill="none" stroke="${col}" stroke-width="${single?1.8:1.1}" ${dash?`stroke-dasharray="${dash}"`:""} opacity="${single?0.85:0.32}"/>`;
+    if(single) b+=`<text x="${mx}" y="${(+my-4).toFixed(1)}" text-anchor="middle" fill="${col}" font-size="9.5" font-weight="600">${esc(e.rel)}</text>`;
   });
-
-  // the `next` spine (sequence) — routed from each source's right edge into the
-  // target's left edge with horizontal tangents, so the arrowhead meets the marker
-  // boundary cleanly instead of stabbing through its centre.
-  DATA.edges.forEach(e=>{ if(e.rel!=="next") return; const a=L.pos[e.source], b=L.pos[e.target]; if(!a||!b) return;
-    const np=nextPath(a,b,svgRadius(byId[e.source]||{}),svgRadius(byId[e.target]||{}));
-    s+=`<path d="${np.path}" fill="none" stroke="${t.seq}" stroke-width="2.4" opacity="0.95"/>`;
-    s+=`<polygon points="-5.5,-4 5.5,0 -5.5,4" fill="${t.seq}" `
-      +`transform="translate(${np.mx.toFixed(1)},${np.my.toFixed(1)}) rotate(${np.ang})"/>`; });   // arrow at mid-line
-
-  // label backing plates (muted) — drawn over the spine/arcs but under the markers,
-  // so lines read as passing *behind* the labels rather than colliding with them.
-  nodes.forEach(n=>{ const p=L.pos[n.id]; if(!p) return; const r=svgRadius(n);
-    s+=`<rect x="${(p.x+r+4).toFixed(1)}" y="${(p.y-8.5).toFixed(1)}" width="${Math.round(approxTextW(n.title))}" height="17" rx="4" fill="${t.surface}" opacity="0.78"/>`;
-  });
-
-  // markers + labels
-  nodes.forEach(n=>{ const p=L.pos[n.id]; if(!p) return; const r=svgRadius(n);
+  DATA.edges.forEach(e=>{ if(e.rel!=="next") return; const a=L.pos[e.source], bb=L.pos[e.target]; if(!a||!bb) return;
+    const np=nextPath(a,bb,svgRadius(byId[e.source]||{}),svgRadius(byId[e.target]||{}));
+    b+=`<path d="${np.path}" fill="none" stroke="${t.seq}" stroke-width="2.4" opacity="0.95"/>`;
+    b+=`<polygon points="-5.5,-4 5.5,0 -5.5,4" fill="${t.seq}" transform="translate(${np.mx.toFixed(1)},${np.my.toFixed(1)}) rotate(${np.ang})"/>`; });
+  nodes.forEach(n=>{ const p=L.pos[n.id]; if(!p) return; const r=svgRadius(n);   // label backing plates
+    b+=`<rect x="${(p.x+r+4).toFixed(1)}" y="${(p.y-8.5).toFixed(1)}" width="${Math.round(approxTextW(n.title))}" height="17" rx="4" fill="${t.surface}" opacity="0.78"/>`; });
+  nodes.forEach(n=>{ const p=L.pos[n.id]; if(!p) return; const r=svgRadius(n);   // markers + labels
     const done=n.status==="done", parked=n.status==="parked";
-    const stroke = (n.milestone||n.type==="milestone") ? `stroke="${t.gold}" stroke-width="2.5"`
-                 : n.type==="project" ? `stroke="${t.ink2}" stroke-width="2"` : "";
-    const dash = parked ? `stroke-dasharray="3 2" stroke="${t.muted}" stroke-width="1.5"` : "";
-    const sel  = n.id===selected;
-    const op   = done ? 0.5 : 1;
-    const label=n.title;   // full title — width is adaptive, so nothing is clipped
-    s+=`<g class="rm-node" data-id="${esc(n.id)}" opacity="${op}">`;
-    if(sel) s+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r+6}" fill="none" stroke="${t.accent}" stroke-width="2.5"/>`;
-    s+=svgShapeMarkup(n.type,p.x,p.y,r,projColor(n.project),"rm-mark",(stroke||dash));
-    s+=`<text x="${(p.x+r+7).toFixed(1)}" y="${p.y.toFixed(1)}" dominant-baseline="middle" fill="${t.ink2}">${esc(label)}</text>`;
-    s+=`<rect class="rm-hit" x="${(p.x-r-2).toFixed(1)}" y="${(p.y-r-2).toFixed(1)}" width="${Math.round(2*r+8+approxTextW(n.title))}" height="${(2*r+4)}"/>`;
-    s+=`</g>`;
-  });
-  s+=`</svg>`;
-  road.innerHTML=s;
+    const stroke=(n.milestone||n.type==="milestone")?`stroke="${t.gold}" stroke-width="2.5"`:n.type==="project"?`stroke="${t.ink2}" stroke-width="2"`:"";
+    const dash=parked?`stroke-dasharray="3 2" stroke="${t.muted}" stroke-width="1.5"`:"", sel=n.id===selected, op=done?0.5:1;
+    b+=`<g class="rm-node" data-id="${esc(n.id)}" opacity="${op}">`;
+    if(sel) b+=`<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r+6}" fill="none" stroke="${t.accent}" stroke-width="2.5"/>`;
+    b+=svgShapeMarkup(n.type,p.x,p.y,r,projColor(n.project),"rm-mark",(stroke||dash));
+    b+=`<text x="${(p.x+r+7).toFixed(1)}" y="${p.y.toFixed(1)}" dominant-baseline="middle" fill="${t.ink2}">${esc(n.title)}</text>`;
+    b+=`<rect class="rm-hit" x="${(p.x-r-2).toFixed(1)}" y="${(p.y-r-2).toFixed(1)}" width="${Math.round(2*r+8+approxTextW(n.title))}" height="${(2*r+4)}"/>`;
+    b+=`</g>`; });
+  b+=`</svg>`;
+
+  // ── AXIS strip (frozen top, drawn 1:1 in px so labels stay legible at any zoom) ──
+  let ax=`<svg width="${bodyW}" height="${AXIS}">`;
+  monthTicks(L.t0,L.t1).forEach(dt=>{ const x=(L.xOf(dt.getTime())*z).toFixed(1);
+    ax+=`<line x1="${x}" y1="${AXIS-9}" x2="${x}" y2="${AXIS}" stroke="${t.line}" stroke-width="1.5"/>`;
+    ax+=`<text x="${x}" y="${AXIS-15}" text-anchor="middle" fill="${t.ink2}" font-size="12" font-weight="700">${fmtMonth(dt)}</text>`; });
+  ax+=`</svg>`;
+
+  // ── GUTTER (frozen left, 1:1 px so lane names stay legible with many projects) ──
+  let gu=`<svg width="${GUT}" height="${bodyH}">`;
+  L.laneInfo.forEach((ln,i)=>{ const cy=((ln.top+ln.h/2)*z), yTop=(ln.top*z).toFixed(1);
+    if(i%2) gu+=`<rect x="0" y="${yTop}" width="${GUT}" height="${(ln.h*z).toFixed(1)}" fill="${t.band}"/>`;
+    gu+=`<line x1="0" y1="${yTop}" x2="${GUT}" y2="${yTop}" stroke="${t.hair}"/>`;
+    gu+=`<rect x="12" y="${(cy-6).toFixed(1)}" width="11" height="11" rx="3" fill="${projColor(ln.p)}"/>`;
+    gu+=`<text x="30" y="${cy.toFixed(1)}" dominant-baseline="middle" fill="${t.ink}" font-size="12.5" font-weight="700">${esc(clip(ln.p,GUT-40))}</text>`; });
+  gu+=`</svg>`;
+
+  road.innerHTML=`<div class="rm-grid" style="grid-template-columns:${GUT}px ${bodyW}px;grid-template-rows:${AXIS}px ${bodyH}px">`
+    +`<div class="rm-corner">project · date</div>`
+    +`<div class="rm-axis">${ax}</div>`
+    +`<div class="rm-gutter">${gu}</div>`
+    +`<div class="rm-body">${b}</div></div>`;
   road.querySelectorAll(".rm-node").forEach(g=> g.addEventListener("click",()=>select(g.dataset.id)) );
 }
 
@@ -603,10 +596,12 @@ $("#focus").onclick=()=>{ if(selected && mode==="graph" && cy) cy.fit(cy.$id(sel
 ["#search","#fType","#fStatus","#fMile"].forEach(s=>$(s).addEventListener("input",()=>render()));
 
 /* roadmap zoom (buttons + ctrl/⌘-wheel) and drag-to-pan */
-function setRoadZoom(z){ roadZoom=Math.max(0.3,Math.min(3,z)); renderRoadmap(); }
-function fitRoad(){ const road=$("#road"); if(!roadNat.W) return;
-  const z=Math.min((road.clientWidth-6)/roadNat.W,(road.clientHeight-6)/roadNat.H,1);
-  roadZoom=Math.max(0.3,Math.min(3,z||1)); renderRoadmap(); road.scrollTo(0,0); }
+function setRoadZoom(z){ roadZoom=Math.max(0.4,Math.min(3,z)); renderRoadmap(); }
+function fitRoad(){ const road=$("#road"); if(!roadNat.PW) return;
+  // fit to WIDTH only (never shrink to fit height) so many-project boards stay readable
+  // and simply scroll vertically; the frozen axis + gutter keep their size regardless.
+  const z=(road.clientWidth-roadNat.GUT-12)/roadNat.PW;
+  roadZoom=Math.max(0.4,Math.min(1.4,z||1)); renderRoadmap(); road.scrollTo(0,0); }
 $("#roadCtl").addEventListener("click",e=>{ const z=e.target.dataset.z; if(!z) return;
   if(z==="in") setRoadZoom(roadZoom*1.2); else if(z==="out") setRoadZoom(roadZoom/1.2); else fitRoad(); });
 (function(){ const road=$("#road"); let drag=false,sx,sy,sl,st;
@@ -619,10 +614,11 @@ $("#roadCtl").addEventListener("click",e=>{ const z=e.target.dataset.z; if(!z) r
   road.addEventListener("pointerup",end); road.addEventListener("pointercancel",end);
   road.addEventListener("wheel",e=>{ e.preventDefault();   // wheel = zoom toward cursor (like the graph)
     const rect=road.getBoundingClientRect(), px=e.clientX-rect.left, py=e.clientY-rect.top;
-    const cx=road.scrollLeft+px, cy=road.scrollTop+py, old=roadZoom;
-    const nz=Math.max(0.3,Math.min(3, old*(e.deltaY<0?1.12:0.892))); if(nz===old) return;
+    const g=roadNat.GUT||0, axh=roadNat.AXIS||0, old=roadZoom;           // fixed panes don't scale
+    const bx=(road.scrollLeft+px-g)/old, by=(road.scrollTop+py-axh)/old; // cursor point in plot-units
+    const nz=Math.max(0.4,Math.min(3, old*(e.deltaY<0?1.12:0.892))); if(nz===old) return;
     roadZoom=nz; renderRoadmap();
-    const k=nz/old; road.scrollLeft=cx*k-px; road.scrollTop=cy*k-py;
+    road.scrollLeft=bx*nz+g-px; road.scrollTop=by*nz+axh-py;
   },{passive:false});
 })();
 

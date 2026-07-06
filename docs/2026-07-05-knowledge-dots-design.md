@@ -131,8 +131,8 @@ parser so no PyYAML dependency, which matters on minimal/locked-down installs):
   keywords, body sections, links) → `POST /api/dot` writes markdown.
 - **Filters**: by project, type, status; search by keyword.
 
-Remote use: `python3 serve.py` on the box, `ssh -L 8000:localhost:8000 host`,
-open `http://localhost:8000` in the local browser. No X forwarding needed.
+Remote use: `python3 serve.py` on the box, `ssh -L 8899:localhost:8899 host`,
+open `http://localhost:8899` in the local browser. No X forwarding needed.
 
 ## Non-goals (YAGNI)
 
