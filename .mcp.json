@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "palace": {
+      "command": "python3",
+      "args": ["viewer/mcp_server.py"]
+    }
+  }
+}
