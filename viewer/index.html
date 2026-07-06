@@ -81,13 +81,16 @@
   /* ── side panel (right) ─────────────────────────────────────────────────── */
   #side{width:var(--sideW,344px);flex:none;border-left:1px solid var(--line);background:var(--panel);
     display:flex;flex-direction:column;overflow:auto}
-  header{display:flex;gap:8px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:wrap;row-gap:8px}
-  header .brand{font-size:15px;font-weight:650;letter-spacing:.14em;text-transform:uppercase;flex:none;
-    display:inline-flex;align-items:center;gap:9px}
-  header .brand .mark{width:16px;height:16px;border-radius:5px;flex:none;box-shadow:var(--shadow);
-    background:conic-gradient(from 210deg,#0072B2,#009E73,#E69F00,#D55E00,#CC79A7,#0072B2)}
-  header .grow{flex:1 1 8px;min-width:0}
-  header .seg,header #newDot{flex:none}
+  header{display:flex;gap:10px;align-items:flex-start;padding:14px 12px 12px 14px;border-bottom:1px solid var(--line)}
+  header .brand{flex:1;min-width:0;display:inline-flex;align-items:center;gap:11px}
+  header .brand .mark{width:30px;height:30px;flex:none}
+  header .brand .name{font-size:19px;font-weight:700;letter-spacing:.24em;text-transform:uppercase;
+    color:var(--ink);line-height:1}
+  .headctl{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:7px}
+  .headctl #newDot{width:100%;text-align:center}
+  #sideCollapse{flex:none;width:24px;height:24px;padding:0;font-size:15px;line-height:1;
+    color:var(--muted);background:transparent;border:0;border-radius:7px}
+  #sideCollapse:hover{background:var(--hair);color:var(--ink)}
 
   /* segmented view toggle — the one bold chrome element, everything else quiet */
   .seg{display:inline-flex;background:var(--hair);border:1px solid var(--line);border-radius:8px;padding:2px}
@@ -133,6 +136,20 @@
   #legend .note{color:var(--muted);font-size:11px;line-height:1.5;margin-top:2px}
   .sw{width:12px;height:12px;border-radius:3px;display:inline-block;flex:none}
 
+  /* status line (loaded · shown · selected) — one quiet line, no extra rule */
+  #status{padding:8px 14px 10px;color:var(--muted);font-size:11.5px;letter-spacing:.02em}
+  #status b{color:var(--ink2);font-weight:650}
+  /* project legend rows breathe a little more */
+  #legend .grid.proj{row-gap:14px}
+
+  /* foldable side panel: collapse to a floating button (lower-right) */
+  #app.side-hidden #side,#app.side-hidden #grip{display:none}
+  #sideToggle{position:fixed;right:16px;bottom:16px;z-index:20;display:none;
+    width:42px;height:42px;border-radius:50%;background:var(--panel);border:1px solid var(--line);
+    box-shadow:var(--shadow);align-items:center;justify-content:center;font-size:20px;color:var(--ink)}
+  #sideToggle:hover{border-color:var(--muted)}
+  #app.side-hidden #sideToggle{display:inline-flex}
+
   #toast{position:fixed;bottom:18px;left:18px;background:var(--ink);color:var(--page);
     padding:9px 15px;border-radius:8px;box-shadow:var(--shadow);opacity:0;transform:translateY(6px);
     transition:.28s;pointer-events:none;font-size:13px}
@@ -156,13 +173,31 @@
   <div id="grip" title="drag to resize panel"></div>
   <div id="side">
     <header>
-      <span class="brand"><i class="mark"></i>Mneme</span>
-      <span class="grow"></span>
-      <span class="seg">
-        <button id="viewGraph" class="on">graph</button>
-        <button id="viewRoad">roadmap</button>
+      <span class="brand" title="Mnemosyne — the Muse of memory">
+        <svg class="mark" viewBox="0 0 28 28" aria-hidden="true">
+          <defs><linearGradient id="mnLyre" x1="4" y1="24" x2="24" y2="4" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#0072B2"/><stop offset=".5" stop-color="#009E73"/><stop offset="1" stop-color="#E69F00"/>
+          </linearGradient></defs>
+          <g fill="none" stroke="url(#mnLyre)" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.5 21.4 C3.9 18.4 4.3 9.6 9.7 6.9" stroke-width="1.8"/>
+            <path d="M17.5 21.4 C24.1 18.4 23.7 9.6 18.3 6.9" stroke-width="1.8"/>
+            <path d="M9.7 6.9 C12.4 5.2 15.6 5.2 18.3 6.9" stroke-width="1.8"/>
+            <path d="M10.9 21.1 C12.6 23.1 15.4 23.1 17.1 21.1" stroke-width="1.8"/>
+            <path d="M11.8 20.7 L11.8 7.5" stroke-width="0.9"/>
+            <path d="M14 21.3 L14 6.8" stroke-width="0.9"/>
+            <path d="M16.2 20.7 L16.2 7.5" stroke-width="0.9"/>
+          </g>
+        </svg>
+        <span class="name">Mneme</span>
       </span>
-      <button id="newDot" class="primary">+&nbsp;dot</button>
+      <div class="headctl">
+        <span class="seg">
+          <button id="viewGraph" class="on">graph</button>
+          <button id="viewRoad">roadmap</button>
+        </span>
+        <button id="newDot" class="primary">+&nbsp;dot</button>
+      </div>
+      <button id="sideCollapse" title="hide panel">&#187;</button>
     </header>
     <div class="bar">
       <input id="search" placeholder="search title / keyword" style="flex:1;min-width:110px">
@@ -181,7 +216,8 @@
       <span class="chips-lab">projects</span>
       <span id="projChips" class="chipwrap"></span>
     </div>
-    <div id="empty">Click a node to view &amp; edit. Loading…</div>
+    <div id="status">loading…</div>
+    <div id="empty">Click a node to view &amp; edit.</div>
     <div id="panel">
       <h3 id="pTitle"></h3>
       <div class="meta" id="pMeta"></div>
@@ -215,6 +251,7 @@
   </div>
 </div>
 <div id="toast"></div>
+<button id="sideToggle" title="show panel">&#8249;</button>
 <script>
 const $ = s => document.querySelector(s);
 
@@ -276,7 +313,7 @@ async function load(){
     DATA = await r.json();
     assignSlots(); buildFilters(); buildLegend(); render();
     $("#empty").innerHTML = DATA.nodes.length
-      ? ("Loaded <b>"+DATA.nodes.length+"</b> dots — click a node to edit.")
+      ? "Click a node to view &amp; edit."
       : "No dots yet. Use the distill-session skill or <b>+ dot</b>.";
   }catch(e){
     $("#empty").innerHTML = "<b style='color:#e34948'>load error:</b> "+((e&&e.message)||e)
@@ -311,7 +348,7 @@ function buildLegend(){
   const edge=(v,label,dash)=>`<span class="k"><svg width="28" height="10">`
     +`<line x1="1" y1="5" x2="27" y2="5" stroke="${v}" stroke-width="2.4" ${dash?'stroke-dasharray="'+dash+'"':''}/></svg>${label}</span>`;
   $("#legend").innerHTML =
-      `<div class="cap">project → colour</div><div class="grid">${proj}</div>`
+      `<div class="cap">project → colour</div><div class="grid proj">${proj}</div>`
     + (over?`<div class="note">9th+ project folds to “other” grey — split projects to keep hues distinct.</div>`:"")
     + `<div class="cap">type → shape &nbsp;·&nbsp; size → rank</div><div class="grid">${shapes}</div>`
     + `<div class="cap">link → relationship</div><div class="grid">`
@@ -335,9 +372,14 @@ function pass(n){
   return true;
 }
 function visibleNodes(){ return DATA.nodes.filter(pass); }
+function updateStatus(){
+  const loaded=DATA.nodes.length, shown=visibleNodes().length;
+  $("#status").innerHTML = `<b>${loaded}</b> loaded &middot; <b>${shown}</b> shown`
+    + (selected?` &middot; <b>1</b> selected`:``);
+}
 
 /* ── dispatch ─────────────────────────────────────────────────────────────── */
-function render(){ mode==="graph" ? renderGraph() : renderRoadmap(); }
+function render(){ mode==="graph" ? renderGraph() : renderRoadmap(); updateStatus(); }
 
 /* ══ GRAPH (cytoscape) ══════════════════════════════════════════════════════ */
 function graphElements(){
@@ -579,11 +621,12 @@ function select(id){
   $("#eMile").checked=!!n.milestone; $("#eKw").value=(n.keywords||[]).join(", ");
   $("#eSource").value=n.source||"";
   $("#eBody").value=n.body||"";
+  updateStatus();
 }
 function deselect(){ selected=null;
   if(cy) cy.elements().removeClass("sel dim hl");
   if(mode==="road") renderRoadmap();
-  $("#panel").classList.remove("show"); $("#empty").style.display="block"; }
+  $("#panel").classList.remove("show"); $("#empty").style.display="block"; updateStatus(); }
 
 async function save(){
   const id=$("#eId").value.trim(); if(!id){ toast("no id"); return; }
@@ -619,6 +662,16 @@ $("#newDot").onclick=newDot;
 $("#save").onclick=save;
 $("#focus").onclick=()=>{ if(selected && mode==="graph" && cy) cy.fit(cy.$id(selected).closedNeighborhood(),60); };
 ["#search","#fType","#fStatus","#fSource","#fMile"].forEach(s=>$(s).addEventListener("input",()=>render()));
+
+/* foldable side panel — collapse to a floating button (lower-right), click to restore */
+function setSide(hidden){ $("#app").classList.toggle("side-hidden",hidden);
+  try{ localStorage.setItem("Mneme.sideHidden",hidden?"1":""); }catch(_){}
+  if(cy) setTimeout(()=>{ cy.resize(); cy.fit(cy.nodes(),44); },0);
+  if(mode==="road") setTimeout(renderRoadmap,0);
+}
+$("#sideCollapse").onclick=()=>setSide(true);
+$("#sideToggle").onclick=()=>setSide(false);
+try{ if(localStorage.getItem("Mneme.sideHidden")) setSide(true); }catch(_){}
 
 /* roadmap zoom (buttons + ctrl/⌘-wheel) and drag-to-pan */
 function setRoadZoom(z){ roadZoom=Math.max(0.4,Math.min(3,z)); renderRoadmap(); }
