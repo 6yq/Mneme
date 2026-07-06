@@ -124,6 +124,18 @@ def write_dot(payload):
     dest.write_text(fm + body, encoding="utf-8")
     return did
 
+def delete_dot(payload):
+    did = payload.get("id", "").strip()
+    if not ID_RE.match(did):
+        raise ValueError("bad id")
+    dest = (DOTS / f"{did}.md").resolve()
+    if DOTS.resolve() not in dest.parents:
+        raise ValueError("path escape")
+    if not dest.exists():
+        raise ValueError("no such dot")
+    dest.unlink()
+    return did
+
 def reindex():
     data = collect()
     by_proj = {}
@@ -167,11 +179,16 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         return super().do_GET()
 
     def do_POST(self):
-        if self.path.rstrip("/") != "/api/dot":
+        path = self.path.rstrip("/")
+        if path not in ("/api/dot", "/api/delete"):
             return self._json({"error": "not found"}, 404)
         n = int(self.headers.get("Content-Length", 0))
         try:
             payload = json.loads(self.rfile.read(n) or b"{}")
+            if path == "/api/delete":
+                did = delete_dot(payload)
+                reindex()
+                return self._json({"ok": True, "id": did, "deleted": True})
             did = write_dot(payload)
             reindex()
             self._json({"ok": True, "id": did})
