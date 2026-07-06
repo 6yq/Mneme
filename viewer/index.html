@@ -88,9 +88,13 @@
     color:var(--ink);line-height:1}
   .headctl{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:6px}
   .headctl #newDot{width:100%;text-align:center}
-  #sideCollapse{flex:none;width:26px;height:26px;padding:0;font-size:15px;line-height:1;
-    color:var(--muted);background:transparent;border:0;border-radius:7px;cursor:pointer}
-  #sideCollapse:hover{background:var(--hair);color:var(--ink)}
+  /* fold control at the graph's lower-right, faded until hover so it doesn't obscure content */
+  #sideFold{position:absolute;right:14px;bottom:14px;z-index:6;width:34px;height:34px;
+    display:inline-flex;align-items:center;justify-content:center;border-radius:9px;cursor:pointer;
+    background:var(--panel);border:1px solid var(--line);box-shadow:var(--shadow);color:var(--ink2);opacity:.5}
+  #sideFold:hover{opacity:1;border-color:var(--accent);color:var(--ink)}
+  #sideFold svg{width:20px;height:20px}
+  body.side-hidden #sideFold{display:none}
 
   /* segmented view toggle — the one bold chrome element, everything else quiet */
   .seg{display:inline-flex;background:var(--hair);border:1px solid var(--line);border-radius:8px;padding:2px}
@@ -171,6 +175,11 @@
       <button data-z="in" title="zoom in">+</button>
       <button data-z="fit" title="fit to view">fit</button>
     </div>
+    <button id="sideFold" title="hide panel">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <rect x="3.5" y="5" width="17" height="14" rx="2.5"/><line x1="14.5" y1="5" x2="14.5" y2="19"/><path d="M6.5 9.5 L9 12 L6.5 14.5"/>
+      </svg>
+    </button>
   </div>
   <div id="grip" title="drag to resize panel"></div>
   <div id="side">
@@ -199,7 +208,6 @@
         </span>
         <button id="newDot" class="primary">+&nbsp;dot</button>
       </div>
-      <button id="sideCollapse" title="hide panel">&#187;</button>
     </header>
     <div class="bar">
       <input id="search" placeholder="search title / keyword" style="flex:1;min-width:110px">
@@ -219,7 +227,7 @@
       <span id="projChips" class="chipwrap"></span>
     </div>
     <div id="status">loading…</div>
-    <div id="empty">Click a node to view &amp; edit.</div>
+    <div id="empty"></div>
     <div id="panel">
       <h3 id="pTitle"></h3>
       <div class="meta" id="pMeta"></div>
@@ -254,10 +262,8 @@
 </div>
 <div id="toast"></div>
 <button id="sideToggle" title="show panel">
-  <svg viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-    <path d="M10.5 21.4 C3.9 18.4 4.3 9.6 9.7 6.9"/><path d="M17.5 21.4 C24.1 18.4 23.7 9.6 18.3 6.9"/>
-    <path d="M9.7 6.9 C12.4 5.2 15.6 5.2 18.3 6.9"/><path d="M10.9 21.1 C12.6 23.1 15.4 23.1 17.1 21.1"/>
-    <path d="M14 21.3 L14 6.8" stroke-width="1"/>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <rect x="3.5" y="5" width="17" height="14" rx="2.5"/><line x1="14.5" y1="5" x2="14.5" y2="19"/><path d="M9 9.5 L6.5 12 L9 14.5"/>
   </svg>
 </button>
 <script>
@@ -321,7 +327,7 @@ async function load(){
     DATA = await r.json();
     assignSlots(); buildFilters(); buildLegend(); render();
     $("#empty").innerHTML = DATA.nodes.length
-      ? "Click a node to view &amp; edit."
+      ? ""
       : "No dots yet. Use the distill-session skill or <b>+ dot</b>.";
   }catch(e){
     $("#empty").innerHTML = "<b style='color:#e34948'>load error:</b> "+((e&&e.message)||e)
@@ -677,7 +683,7 @@ function setSide(hidden){ document.body.classList.toggle("side-hidden",hidden);
   if(cy) setTimeout(()=>{ cy.resize(); cy.fit(cy.nodes(),44); },0);
   if(mode==="road") setTimeout(renderRoadmap,0);
 }
-$("#sideCollapse").onclick=()=>setSide(true);
+$("#sideFold").onclick=()=>setSide(true);
 $("#sideToggle").onclick=()=>setSide(false);
 try{ if(localStorage.getItem("Mneme.sideHidden")) setSide(true); }catch(_){}
 
