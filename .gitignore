@@ -24,3 +24,11 @@ CLAUDE.md
 
 # imported academic material (extracted text + provenance) — local only
 sources/
+
+# source binaries never belong in the tracked repo — they live in gitignored sources/<slug>/
+*.pdf
+*.pptx
+*.ppt
+*.docx
+*.odt
+*.epub
